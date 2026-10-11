@@ -12,19 +12,21 @@ import base64
 import os
 import queue
 import time
-from distutils.version import StrictVersion
 from multiprocessing import Process, Queue, Value
 
 import cv2
 import numpy as np
 import requests
-import tensorflow as tf
+import tensorflow as _tf
 
 import compliance
 import config
 import overlay
 
-if StrictVersion(tf.__version__) < StrictVersion('1.12.0'):
+# The model is a TensorFlow 1.x frozen graph; TF 2.x runs it through the v1 API.
+tf = getattr(_tf, 'compat', None) and _tf.compat.v1 or _tf
+_version = tuple(int(x) for x in _tf.__version__.split('.')[:2])
+if _version < (1, 12):
     raise ImportError('SiteSentinel needs TensorFlow 1.12 or newer.')
 
 WINDOW = 'SiteSentinel'
@@ -51,7 +53,9 @@ def output_tensors():
 
 def detect(frame, sess, tensors):
     image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-    out = sess.run(tensors, feed_dict={image_tensor: np.expand_dims(frame, axis=0)})
+    # OpenCV frames are BGR but the model was trained on RGB, so convert before detecting.
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    out = sess.run(tensors, feed_dict={image_tensor: np.expand_dims(rgb, axis=0)})
     out['num_detections'] = int(out['num_detections'][0])
     out['detection_classes'] = out['detection_classes'][0].astype(np.int64)
     out['detection_boxes'] = out['detection_boxes'][0]
