@@ -1,0 +1,9 @@
+services:
+  sitesentinel:
+    image: sitesentinel-backend
+    build: .
+    environment:
+      - PROVIDER=console   # use "spark" to post alerts to a Webex space
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8080:8080"

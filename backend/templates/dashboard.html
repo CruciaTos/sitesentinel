@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SiteSentinel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <header class="bar">
+    <h1 class="wordmark">SiteSentinel</h1>
+    <div class="bar-status" aria-live="polite">
+      <span class="dot" id="live-dot"></span>
+      <span id="live-text">Waiting for a camera</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="now" aria-labelledby="now-title">
+      <div class="tape" aria-hidden="true"></div>
+      <div class="now-body">
+        <div class="now-main">
+          <h2 id="now-title" class="now-title">Fully protected, last <span id="window">15</span> minutes</h2>
+          <p class="big" id="rate">&ndash;</p>
+          <p class="now-sub" id="rate-sub">No people detected yet.</p>
+        </div>
+        <dl class="tallies">
+          <div class="tally">
+            <dt>Missing hard hat</dt>
+            <dd id="t-hat">0</dd>
+          </div>
+          <div class="tally">
+            <dt>Missing vest</dt>
+            <dd id="t-vest">0</dd>
+          </div>
+          <div class="tally">
+            <dt>Missing both</dt>
+            <dd id="t-both">0</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="cols">
+      <div class="log" aria-labelledby="log-title">
+        <div class="log-head">
+          <h2 id="log-title">Incident log</h2>
+          <div class="seg" role="group" aria-label="Filter log">
+            <button type="button" class="seg-btn is-on" data-filter="violations" aria-pressed="true">Violations</button>
+            <button type="button" class="seg-btn" data-filter="all" aria-pressed="false">All checks</button>
+          </div>
+        </div>
+        <ol class="rows" id="rows"></ol>
+        <div class="empty" id="empty" hidden>
+          <p class="empty-title">Nothing logged yet.</p>
+          <p class="empty-body">Start the backend, then run the detector. Checks appear here within seconds.</p>
+          <pre><code>python3 run_detector.py --model_dir=model --video_file_name=demo_video.mp4 --show_video_window=1 --camera_id=gate-1</code></pre>
+        </div>
+      </div>
+
+      <aside class="side">
+        <section aria-labelledby="hours-title">
+          <h2 id="hours-title">Last 12 hours</h2>
+          <div id="hours" class="hours" role="img" aria-label="Checks per hour, violations highlighted"></div>
+          <p class="legend"><span class="key key-ok"></span>Checks<span class="key key-bad"></span>With violations</p>
+        </section>
+        <section aria-labelledby="cams-title">
+          <h2 id="cams-title">Cameras</h2>
+          <ul class="cams" id="cams"></ul>
+          <p class="muted" id="cams-empty">No cameras have reported in.</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <dialog id="viewer" class="viewer">
+    <form method="dialog" class="viewer-in">
+      <img id="viewer-img" alt="">
+      <p id="viewer-cap"></p>
+      <button class="close" value="close">Close</button>
+    </form>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
