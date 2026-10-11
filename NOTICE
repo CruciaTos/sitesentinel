@@ -1,0 +1,22 @@
+ppe-detection
+
+Copyright (c) 2019 Cisco Systems, Inc. and/or its affiliates
+
+This project includes software developed at Cisco Systems, Inc. and/or its affiliates.
+
+----------------------------------------------------------------------
+
+SiteSentinel
+
+This project is derived from "ppe-detection" by Cisco Systems, Inc.
+(https://github.com/CiscoDevNet/ppe-detection), licensed under the Apache
+License, Version 2.0. The detection model, the hard hat / vest matching idea,
+and the backend /v1/detections contract originate there.
+
+Modifications Copyright (c) 2026 Smit Mhatre. Changes from the original:
+  - New web dashboard served by the backend (live compliance, incident log,
+    photo evidence, hourly activity, camera status).
+  - New video overlay replacing the TensorFlow Object Detection API drawing code.
+  - Backend restructured into an in-memory event store plus JSON API; alerts
+    reworded; Docker setup updated.
+  - Detector refactored into run_detector.py, compliance.py and overlay.py.
