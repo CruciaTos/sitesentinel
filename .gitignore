@@ -18,3 +18,6 @@ backend/reports/
 .deploy-state/
 *.tar
 *.tar.gz
+
+# Filled mini-project report (has student names and seat numbers; not for a public repo)
+/report/

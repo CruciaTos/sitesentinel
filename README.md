@@ -78,7 +78,9 @@ docker compose -f jenkins/docker-compose.yml up -d --build
 
 Open http://localhost:8081 (admin / admin) and open the `sitesentinel` job. It polls the repo every
 2 minutes, or use **Build Now**. To demonstrate the automatic rollback, use **Build with Parameters**
-and tick `SIMULATE_FAILED_DEPLOY`: the smoke test fails and the previous image is put back.
+and tick `SIMULATE_FAILED_DEPLOY`: the smoke test fails and the previous image is put back. Do this on a
+new commit: the rollback restores the image that ran before, so redeploying the commit that is already running
+has nothing to roll back to. The `latest` tag is only moved after a build passes its smoke test.
 Stop Jenkins with `docker compose -f jenkins/docker-compose.yml down`.
 
 ### Kubernetes (local, optional)

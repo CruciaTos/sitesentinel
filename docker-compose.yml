@@ -31,7 +31,9 @@ services:
     restart: unless-stopped
 
   prometheus:
-    build: ./monitoring/prometheus
+    build:
+      context: ./monitoring/prometheus
+      provenance: false # keeps the image ID stable when deploy.sh rebuilds it
     image: sitesentinel-prometheus:local
     ports:
       - "9090:9090"
@@ -41,7 +43,9 @@ services:
     restart: unless-stopped
 
   grafana:
-    build: ./monitoring/grafana
+    build:
+      context: ./monitoring/grafana
+      provenance: false
     image: sitesentinel-grafana:local
     ports:
       - "3000:3000"

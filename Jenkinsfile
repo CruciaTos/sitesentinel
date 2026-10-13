@@ -65,16 +65,16 @@ pipeline {
             steps {
                 sh '''
                     docker build --target test -t sitesentinel-backend:test backend
-                    docker build --build-arg APP_VERSION="$TAG" -t "$IMAGE:$TAG" -t "$IMAGE:latest" backend
+                    docker build --build-arg APP_VERSION="$TAG" -t "$IMAGE:$TAG" backend
                 '''
             }
         }
 
         stage('Push to Registry') {
             steps {
+                // Only the commit tag here; "latest" is moved once the release has passed its smoke test.
                 sh '''
                     docker push "$IMAGE:$TAG"
-                    docker push "$IMAGE:latest"
                     curl -fsS http://registry:5000/v2/sitesentinel-backend/tags/list || true
                 '''
             }
@@ -123,6 +123,10 @@ pipeline {
             }
         }
         success {
+            sh '''
+                docker tag "$IMAGE:$TAG" "$IMAGE:latest"
+                docker push "$IMAGE:latest"
+            '''
             echo "DEPLOYED ${env.IMAGE}:${env.TAG}: app http://localhost:8080, Grafana http://localhost:3000, Prometheus http://localhost:9090"
         }
     }
