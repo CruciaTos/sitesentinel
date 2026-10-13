@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Runs the PPE detector on a video file or camera and reports each check to the backend.
+"""Runs the PPE detector on a camera, stream or video file and reports each check to the backend.
 
-Example:
-    python3 run_detector.py --model_dir=model --video_file_name=demo_video.mp4 \
-        --show_video_window=1 --camera_id=gate-1
+Examples:
+    python3 run_detector.py --model_dir=model --source=demo_video.mp4 --camera_id=gate-1 --show_video_window=1
+    python3 run_detector.py --model_dir=model --source=0 --camera_id=office-webcam
+    python3 run_detector.py --model_dir=model --source=rtsp://user:pass@192.168.1.20:554/stream1 --camera_id=gate-1
+
+Run one detector per camera. Live sources reconnect by themselves when the connection drops.
 
 Derived from CiscoDevNet/ppe-detection (Apache License 2.0); see NOTICE.
 """
@@ -21,7 +24,9 @@ import tensorflow as _tf
 
 import compliance
 import config
+import messages
 import overlay
+from camera import FrameSource
 
 # The model is a TensorFlow 1.x frozen graph; TF 2.x runs it through the v1 API.
 tf = getattr(_tf, 'compat', None) and _tf.compat.v1 or _tf
@@ -63,32 +68,29 @@ def detect(frame, sess, tensors):
     return out
 
 
-def build_message(camera_id, people, image):
+def encode_snapshot(image):
     ok, jpeg = cv2.imencode('.jpg', image)
     return {
-        'timestamp': int(time.time() * 1000),
-        'cameraId': camera_id,
-        'persons': [{'hardhat': p['hardhat'], 'vest': p['vest']} for p in people],
-        'image': {
-            'height': image.shape[0],
-            'width': image.shape[1],
-            'format': 'jpeg',
-            'raw': base64.b64encode(jpeg.tobytes()).decode('utf-8'),
-        },
+        'height': image.shape[0],
+        'width': image.shape[1],
+        'format': 'jpeg',
+        'raw': base64.b64encode(jpeg.tobytes()).decode('utf-8'),
     }
 
 
 def report_worker(run_flag, outbox):
-    """Separate process: posts queued results so inference never waits on the network."""
+    """Separate process: posts queued (url, message) pairs so inference never waits on the network."""
     while run_flag.value:
         try:
-            message = outbox.get(block=True, timeout=5)
+            url, message = outbox.get(block=True, timeout=5)
         except queue.Empty:
             continue
         try:
-            requests.post(config.detection_api, json=message, timeout=5)
+            response = requests.post(url, json=message, timeout=5)
+            if response.status_code >= 400:
+                print('Backend rejected the check ({}): {}'.format(response.status_code, response.text[:200]))
         except requests.exceptions.RequestException:
-            print('Could not reach the backend at', config.detection_api)
+            print('Could not reach the backend at', url)
 
 
 def open_window():
@@ -97,42 +99,43 @@ def open_window():
     cv2.setWindowProperty(WINDOW, cv2.WND_PROP_FULLSCREEN, mode)
 
 
-def process_video(graph, source, show_window, camera_id, run_flag, outbox):
-    cap = cv2.VideoCapture(source)
-    if show_window:
-        open_window()
+def set_resolution(cap):
     if (config.capture_image_width, config.capture_image_height) in config.supported_video_resolution:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.capture_image_width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.capture_image_height)
+
+
+def process_video(graph, source_text, show_window, camera_id, report, run_flag, outbox):
+    source = FrameSource(source_text, configure=set_resolution)
+    print('Reading', 'live camera' if source.live else 'video file', source.source, 'as', camera_id)
+    if show_window:
+        open_window()
 
     threshold = config.object_confidence_threshold
     with graph.as_default():
         tensors = output_tensors()
         with tf.Session() as sess:
             last_sent = time.time()
-            frames_read = 0
-            while True:
-                ok, frame = cap.read()
-
-                if config.input_type.lower() == 'file':
-                    frames_read += 1
-                    if frames_read == int(cap.get(cv2.CAP_PROP_FRAME_COUNT)):
-                        frames_read = 0
-                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                        continue
-
+            while run_flag.value:
+                frame = source.read(stop=lambda: not run_flag.value)
                 if frame is None:
-                    print('No more frames.')
                     break
 
                 output = detect(frame, sess, tensors)
+                # The overlay always uses the quick overlap rule; with --report frames the backend's
+                # trained model makes the decision that is recorded.
                 people = compliance.assess_people(output, threshold)
                 overlay.draw_frame(frame, output, people, camera_id, threshold)
 
                 if people and time.time() - last_sent > config.message_send_interval / 1000.0:
                     snapshot = cv2.resize(frame, (config.storage_image_width, config.storage_image_height))
+                    image = encode_snapshot(snapshot)
+                    if report == 'frames':
+                        item = (config.frames_api, messages.frame_message(camera_id, output, threshold, image))
+                    else:
+                        item = (config.detection_api, messages.detection_message(camera_id, people, image))
                     try:
-                        outbox.put_nowait(build_message(camera_id, people, snapshot))
+                        outbox.put_nowait(item)
                         last_sent = time.time()
                     except queue.Full:
                         pass
@@ -143,16 +146,20 @@ def process_video(graph, source, show_window, camera_id, run_flag, outbox):
                         run_flag.value = 0
                         break
 
-    cap.release()
+    source.release()
     cv2.destroyAllWindows()
 
 
 def main():
     parser = argparse.ArgumentParser(description='Hard hat and vest detection')
     parser.add_argument('--model_dir', required=True, help='folder containing frozen_inference_graph.pb')
-    parser.add_argument('--video_file_name', required=True, help='video file, or camera device such as /dev/video0')
-    parser.add_argument('--show_video_window', type=int, required=True, help='1 to show the preview window, 0 to hide it')
+    parser.add_argument('--source', '--video_file_name', dest='source', required=True,
+                        help='webcam number (0), device (/dev/video0), stream URL (rtsp://...) or video file')
     parser.add_argument('--camera_id', required=True, help='a name for this camera, shown on the dashboard')
+    parser.add_argument('--show_video_window', type=int, default=0, help='1 to show the preview window, 0 to hide it')
+    parser.add_argument('--report', choices=['frames', 'detections'], default='frames',
+                        help='frames: send boxes and let the backend model decide (default); '
+                             'detections: send the overlap rule decisions')
     args = parser.parse_args()
 
     model_path = os.path.join(args.model_dir, 'frozen_inference_graph.pb')
@@ -168,8 +175,8 @@ def main():
     worker = Process(target=report_worker, args=(run_flag, outbox))
     worker.start()
     try:
-        process_video(graph, args.video_file_name, bool(args.show_video_window),
-                      args.camera_id, run_flag, outbox)
+        process_video(graph, args.source, bool(args.show_video_window),
+                      args.camera_id, args.report, run_flag, outbox)
     finally:
         run_flag.value = 0
         worker.join()

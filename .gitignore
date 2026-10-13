@@ -21,3 +21,7 @@ backend/reports/
 
 # Filled mini-project report (has student names and seat numbers; not for a public repo)
 /report/
+
+# Detector model and demo video, downloaded by get_assets.sh
+/inference/model/
+/inference/demo_video.mp4

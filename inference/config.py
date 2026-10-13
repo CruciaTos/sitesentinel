@@ -1,8 +1,11 @@
 """Detector settings. Every value can be overridden with an environment variable."""
 import os
 
-# Where detection results are sent (the SiteSentinel backend).
-detection_api = os.getenv("PPE_DETECTION_URL", "http://localhost:8080/v1/detections")
+# The SiteSentinel backend. Frames (boxes, judged by the backend's trained model) go to /v1/frames;
+# --report detections sends the detector's own decisions to /v1/detections instead.
+backend_url = os.getenv("PPE_BACKEND_URL", "http://localhost:8080").rstrip("/")
+frames_api = os.getenv("PPE_FRAMES_URL", backend_url + "/v1/frames")
+detection_api = os.getenv("PPE_DETECTION_URL", backend_url + "/v1/detections")
 
 # Minimum time between messages to the backend, in milliseconds.
 message_send_interval = int(os.getenv("PPE_MESSAGE_SEND_INTERVAL", 1000))
@@ -23,6 +26,3 @@ display_window_height = int(os.getenv("PPE_DISPLAY_WINDOW_HEIGHT", 720))
 # Size of the snapshot saved with each check.
 storage_image_width = int(os.getenv("PPE_STORAGE_IMAGE_WIDTH", 640))
 storage_image_height = int(os.getenv("PPE_STORAGE_IMAGE_HEIGHT", 360))
-
-# "camera" for a USB camera, "file" to loop a video file.
-input_type = os.getenv("PPE_INPUT_TYPE", "file")

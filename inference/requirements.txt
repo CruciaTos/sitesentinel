@@ -1,4 +1,6 @@
-numpy==1.14.5
-tensorflow-gpu>1.2.0
-opencv-python
-requests
+# Detector runtime, tested with Python 3.12 on Windows (CPU). On Linux with an NVIDIA GPU,
+# install "tensorflow[and-cuda]==2.20.0" instead of tensorflow.
+tensorflow==2.20.0
+opencv-python==5.0.0.93
+numpy==2.5.4
+requests==2.34.2

@@ -1,0 +1,4 @@
+# Unit tests for the camera and message code (no TensorFlow or OpenCV needed).
+numpy==2.5.3
+pytest==9.1.1
+flake8==7.4.1

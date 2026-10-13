@@ -2,7 +2,6 @@
 import time
 
 import cv2
-import numpy as np
 
 from compliance import split_detections
 

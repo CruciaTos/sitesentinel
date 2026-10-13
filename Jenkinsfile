@@ -40,10 +40,9 @@ pipeline {
                     rm -rf reports
                     python3 -m venv .venv
                     . .venv/bin/activate
-                    pip install -q -r backend/requirements-dev.txt
-                    cd backend
-                    flake8 .
-                    pytest --junitxml=../reports/backend-junit.xml
+                    pip install -q -r backend/requirements-dev.txt -r inference/requirements-test.txt
+                    (cd backend && flake8 . && pytest --junitxml=../reports/backend-junit.xml)
+                    (cd inference && flake8 . && pytest --junitxml=../reports/inference-junit.xml)
                 '''
             }
         }

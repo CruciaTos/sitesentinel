@@ -125,6 +125,7 @@ The rules are unit-tested with `promtool test rules monitoring/prometheus/alert-
 ```sh
 cd backend && pip install -r requirements-dev.txt && flake8 . && pytest
 cd ml && pip install -r requirements.txt pytest flake8 && flake8 . && pytest
+cd inference && pip install -r requirements-test.txt && flake8 . && pytest
 ```
 
 ## Dashboard
@@ -171,27 +172,46 @@ Simulator: `python simulator.py [--count N] [--url URL]`, plus `BACKEND_URL`, `C
 - `GET /healthz` (status, app version, model version), `GET /api/version`, `GET /metrics`.
 - The dashboard reads `GET /api/summary`, `GET /api/events` and `GET /api/events/<id>/image`.
 
-## Real camera (detector)
+## Live cameras (detector)
 
-The detector needs Python 3 with TensorFlow 1.12 or newer. Download the model and demo video with
-`sh get_assets.sh`, start the backend, then:
+The simulator stands in for cameras. To use real ones, run the TensorFlow detector (`inference/`) once per
+camera. It reads a webcam, an IP camera stream or a video file, finds people, hard hats and vests, and
+posts the boxes to `/v1/frames`, where the backend's trained model decides who is protected. The camera then
+appears on the dashboard, in Grafana and in the alerts under its `--camera_id`.
 
 ```sh
+sh get_assets.sh                       # detector model + demo video (once)
 cd inference
-pip3 install -r requirements.txt
-python3 run_detector.py --model_dir=model --video_file_name=demo_video.mp4 --show_video_window=1 --camera_id=gate-1
+pip install -r requirements.txt        # Python 3.12, TensorFlow 2.20
+python run_detector.py --model_dir=model --source=demo_video.mp4 --camera_id=gate-1 --show_video_window=1
 ```
+
+| `--source` | Example |
+| --- | --- |
+| Webcam (number) | `--source=0` |
+| IP / CCTV camera (RTSP) | `--source=rtsp://user:password@192.168.1.20:554/stream1` |
+| MJPEG / HTTP stream | `--source=http://192.168.1.21:8080/video` |
+| Linux device | `--source=/dev/video0` |
+| Video file (loops) | `--source=demo_video.mp4` |
 
 | Option | Meaning |
 | --- | --- |
 | `--model_dir` | Folder containing `frozen_inference_graph.pb` |
-| `--video_file_name` | A video file, or a camera such as `/dev/video0` (list them with `ls /dev/video*`) |
-| `--show_video_window` | `1` shows the preview window, `0` hides it. Press `q` in the window to stop. |
-| `--camera_id` | A name for this camera. It appears on the dashboard and in alerts. |
+| `--camera_id` | A name for this camera, shown on the dashboard and in alerts |
+| `--show_video_window` | `1` shows the preview window with the overlay (press `q` to stop); default `0` |
+| `--report` | `frames` (default): send boxes, the backend model decides. `detections`: send the detector's own overlap-rule decisions to `/v1/detections` |
 
-Detector settings (confidence threshold, resolution, send interval) are in `inference/config.py` and can
-be overridden with `PPE_*` environment variables. The detector model is an SSD MobileNet v1, initialised
-from COCO weights and trained to find hard hats, vests and people; it comes from the original project.
+- Live cameras reconnect by themselves (1 s, 2 s, 4 s ... up to 30 s) when the stream drops or is not
+  reachable yet; video files loop.
+- Several cameras: start one detector per camera, each with its own `--camera_id`.
+- Backend on another machine: set `PPE_BACKEND_URL=http://<backend-host>:8080`.
+- Turn the simulator off when real cameras are connected: `docker compose stop simulator`.
+- Other settings (confidence threshold, resolution, send interval) are in `inference/config.py` and can be
+  overridden with `PPE_*` environment variables.
+- The camera and message code is unit-tested in both pipelines (`cd inference && pytest`, no TensorFlow needed).
+
+The detector model is an SSD MobileNet v1, initialised from COCO weights and trained to find hard hats,
+vests and people; it comes from the original project.
 
 ## Project layout
 
