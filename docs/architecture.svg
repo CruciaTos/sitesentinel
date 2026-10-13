@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 640" width="1400" height="640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b4252"/>
+    </marker>
+    <marker id="arrow-fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <style>
+      .box { stroke-width: 2; rx: 12; }
+      .num { font-size: 13px; font-weight: 700; fill: #ffffff; }
+      .title { font-size: 17px; font-weight: 700; fill: #111827; }
+      .tool { font-size: 13.5px; fill: #374151; }
+      .lane { font-size: 13px; font-weight: 700; fill: #6b7280; letter-spacing: 1.5px; }
+      .flow { stroke: #3b4252; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .feedback { stroke: #c2410c; stroke-width: 2.2; fill: none; stroke-dasharray: 7 5; marker-end: url(#arrow-fb); }
+      .note { font-size: 13px; fill: #374151; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="640" fill="#ffffff"/>
+  <text x="700" y="44" text-anchor="middle" font-size="24" font-weight="700" fill="#111827">SiteSentinel — End-to-End DevOps Pipeline</text>
+  <text x="700" y="70" text-anchor="middle" class="note">Same stages run on GitHub Actions (cloud) and on a local Jenkins server; every run retrains and validates the ML model</text>
+
+  <text x="40" y="104" class="lane">CONTINUOUS INTEGRATION</text>
+  <text x="310" y="324" class="lane">CONTINUOUS DELIVERY · DEPLOYMENT · OPERATIONS</text>
+
+  <!-- Row 1: left to right -->
+  <g>
+    <rect class="box" x="40" y="116" width="220" height="110" fill="#f1f5f9" stroke="#64748b"/>
+    <circle cx="66" cy="142" r="14" fill="#64748b"/><text x="66" y="147" text-anchor="middle" class="num">1</text>
+    <text x="88" y="148" class="title">Develop</text>
+    <text x="58" y="180" class="tool">Python · Flask · VS Code</text>
+    <text x="58" y="202" class="tool">feature branch → pull request</text>
+  </g>
+  <g>
+    <rect class="box" x="310" y="116" width="220" height="110" fill="#f1f5f9" stroke="#64748b"/>
+    <circle cx="336" cy="142" r="14" fill="#64748b"/><text x="336" y="147" text-anchor="middle" class="num">2</text>
+    <text x="358" y="148" class="title">Version Control</text>
+    <text x="328" y="180" class="tool">Git · GitHub</text>
+    <text x="328" y="202" class="tool">push / PR triggers pipeline</text>
+  </g>
+  <g>
+    <rect class="box" x="580" y="116" width="220" height="110" fill="#eff6ff" stroke="#2563eb"/>
+    <circle cx="606" cy="142" r="14" fill="#2563eb"/><text x="606" y="147" text-anchor="middle" class="num">3</text>
+    <text x="628" y="148" class="title">Build &amp; Test (CI)</text>
+    <text x="598" y="180" class="tool">GitHub Actions · Jenkins</text>
+    <text x="598" y="202" class="tool">flake8 · pytest · promtool</text>
+  </g>
+  <g>
+    <rect class="box" x="850" y="116" width="220" height="110" fill="#f5f3ff" stroke="#7c3aed"/>
+    <circle cx="876" cy="142" r="14" fill="#7c3aed"/><text x="876" y="147" text-anchor="middle" class="num">4</text>
+    <text x="898" y="148" class="title">Train &amp; Validate</text>
+    <text x="868" y="180" class="tool">scikit-learn (MLOps)</text>
+    <text x="868" y="202" class="tool">quality gate · model version</text>
+  </g>
+  <g>
+    <rect class="box" x="1120" y="116" width="240" height="110" fill="#ecfeff" stroke="#0891b2"/>
+    <circle cx="1146" cy="142" r="14" fill="#0891b2"/><text x="1146" y="147" text-anchor="middle" class="num">5</text>
+    <text x="1168" y="148" class="title">Containerize</text>
+    <text x="1138" y="180" class="tool">Docker multi-stage build</text>
+    <text x="1138" y="202" class="tool">image tag = sha-&lt;commit&gt;</text>
+  </g>
+
+  <!-- Row 2: right to left -->
+  <g>
+    <rect class="box" x="1120" y="336" width="240" height="110" fill="#ecfeff" stroke="#0891b2"/>
+    <circle cx="1146" cy="362" r="14" fill="#0891b2"/><text x="1146" y="367" text-anchor="middle" class="num">6</text>
+    <text x="1168" y="368" class="title">Registry</text>
+    <text x="1138" y="400" class="tool">GHCR · local registry:2</text>
+    <text x="1138" y="422" class="tool">versioned, rollback-ready</text>
+  </g>
+  <g>
+    <rect class="box" x="850" y="336" width="220" height="110" fill="#f0fdf4" stroke="#16a34a"/>
+    <circle cx="876" cy="362" r="14" fill="#16a34a"/><text x="876" y="367" text-anchor="middle" class="num">7</text>
+    <text x="898" y="368" class="title">Deploy (CD)</text>
+    <text x="868" y="400" class="tool">Kubernetes (kind) · Compose</text>
+    <text x="868" y="422" class="tool">rolling update</text>
+  </g>
+  <g>
+    <rect class="box" x="580" y="336" width="220" height="110" fill="#f0fdf4" stroke="#16a34a"/>
+    <circle cx="606" cy="362" r="14" fill="#16a34a"/><text x="606" y="367" text-anchor="middle" class="num">8</text>
+    <text x="628" y="368" class="title">Verify</text>
+    <text x="598" y="400" class="tool">automated smoke tests</text>
+    <text x="598" y="422" class="tool">auto-rollback on failure</text>
+  </g>
+  <g>
+    <rect class="box" x="310" y="336" width="220" height="110" fill="#fff7ed" stroke="#ea580c"/>
+    <circle cx="336" cy="362" r="14" fill="#ea580c"/><text x="336" y="367" text-anchor="middle" class="num">9</text>
+    <text x="358" y="368" class="title">Running App</text>
+    <text x="328" y="400" class="tool">Flask API + dashboard</text>
+    <text x="328" y="422" class="tool">camera simulator · ML model</text>
+  </g>
+  <g>
+    <rect class="box" x="40" y="336" width="220" height="110" fill="#fff7ed" stroke="#ea580c"/>
+    <circle cx="66" cy="362" r="14" fill="#ea580c"/><text x="66" y="367" text-anchor="middle" class="num">10</text>
+    <text x="88" y="368" class="title">Monitor</text>
+    <text x="58" y="400" class="tool">Prometheus · Grafana</text>
+    <text x="58" y="422" class="tool">metrics · dashboards · alerts</text>
+  </g>
+
+  <!-- Flow arrows -->
+  <path class="flow" d="M260,171 L306,171"/>
+  <path class="flow" d="M530,171 L576,171"/>
+  <path class="flow" d="M800,171 L846,171"/>
+  <path class="flow" d="M1070,171 L1116,171"/>
+  <path class="flow" d="M1240,226 L1240,332"/>
+  <text x="1252" y="284" class="note">docker push</text>
+  <path class="flow" d="M1120,391 L1074,391"/>
+  <path class="flow" d="M850,391 L804,391"/>
+  <path class="flow" d="M580,391 L534,391"/>
+  <path class="flow" d="M310,391 L264,391"/>
+
+  <!-- Feedback loop -->
+  <path class="feedback" d="M150,336 L150,230"/>
+  <text x="162" y="290" class="note" fill="#c2410c" font-weight="600">feedback &amp; continuous improvement</text>
+
+  <!-- Triggers and notes -->
+  <rect x="40" y="486" width="1320" height="122" rx="12" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="62" y="516" font-size="15" font-weight="700" fill="#111827">Pipeline triggers</text>
+  <text x="62" y="542" class="note">• git push / pull request to main (PRs stop after build — nothing is deployed)</text>
+  <text x="62" y="564" class="note">• change to ml/data → model retrained, gated and versioned automatically</text>
+  <text x="62" y="586" class="note">• weekly schedule (retraining) · manual "Run workflow" · Jenkins polls the repo every 2 minutes</text>
+  <text x="720" y="516" font-size="15" font-weight="700" fill="#111827">Gates that stop a bad release</text>
+  <text x="720" y="542" class="note">• lint or unit-test failure · alert-rule unit tests</text>
+  <text x="720" y="564" class="note">• model accuracy below 90 % or worse than the current model</text>
+  <text x="720" y="586" class="note">• smoke test fails after deploy → previous version restored</text>
+</svg>

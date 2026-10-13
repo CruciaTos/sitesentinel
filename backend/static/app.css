@@ -38,7 +38,7 @@ ol, ul { list-style: none; }
 
 :focus-visible { outline: 3px solid var(--tape); outline-offset: 2px; }
 
-.bar, main { max-width: 1180px; margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
+.bar, main, .foot { max-width: 1180px; margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
 
 .bar {
   display: flex;
@@ -221,6 +221,15 @@ h2 { font-size: 18px; font-weight: 800; font-stretch: 112%; }
 .cams .name { font-weight: 700; }
 .cams .seen { color: var(--muted); font-size: 14px; }
 .muted { color: var(--muted); padding-top: 12px; }
+
+/* --- Footer --- */
+.foot p {
+  padding: 12px 0 28px;
+  border-top: 2px solid var(--rule);
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* --- Photo viewer --- */
 .viewer { border: 2px solid var(--rule); padding: 0; background: var(--paper); color: var(--ink); max-width: min(920px, 94vw); }

@@ -20,3 +20,7 @@ Modifications Copyright (c) 2026 Smit Mhatre. Changes from the original:
   - Backend restructured into an in-memory event store plus JSON API; alerts
     reworded; Docker setup updated.
   - Detector refactored into run_detector.py, compliance.py and overlay.py.
+  - Learned PPE association model (ml/) replaces the fixed overlap rule in the
+    backend; camera simulator; Prometheus metrics.
+  - DevOps pipeline: GitHub Actions and Jenkins CI/CD, Kubernetes manifests,
+    deploy/rollback scripts, Prometheus alert rules and a Grafana dashboard.

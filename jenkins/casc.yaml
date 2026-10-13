@@ -1,0 +1,52 @@
+# Jenkins configuration as code: admin user, security, and the SiteSentinel pipeline job.
+jenkins:
+  systemMessage: "SiteSentinel local CI/CD. The pipeline job is defined in casc.yaml and the stages in the Jenkinsfile."
+  numExecutors: 2
+  mode: NORMAL
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID:-admin}"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8081/"
+
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
+
+jobs:
+  - script: |
+      pipelineJob('sitesentinel') {
+        displayName('SiteSentinel')
+        description('Lint & test, train the model, build and push the image, deploy with docker compose, smoke test, roll back on failure.')
+        properties {
+          pipelineTriggers {
+            triggers {
+              pollSCM {
+                scmpoll_spec('H/2 * * * *')
+              }
+            }
+          }
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('file:///workspace/sitesentinel')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(false)
+          }
+        }
+      }

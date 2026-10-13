@@ -6,3 +6,15 @@ venv/
 .DS_Store
 .vscode/
 *.swp
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+/reports/
+backend/reports/
+
+# Deployment state and saved images
+.deploy-state/
+*.tar
+*.tar.gz

@@ -1,0 +1,5 @@
+# Training dependencies (ml/train.py). Wheels exist for CPython 3.12 and 3.13 on Linux and Windows.
+# Tests also need pytest, which CI installs separately.
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.9.1

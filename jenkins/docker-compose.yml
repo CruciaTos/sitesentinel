@@ -1,0 +1,35 @@
+# Local CI/CD: Jenkins (http://localhost:8081, admin/admin) and a Docker registry (localhost:5000).
+# Start from the repo root: docker compose -f jenkins/docker-compose.yml up -d --build
+name: sitesentinel-ci
+
+services:
+  jenkins:
+    build: .
+    image: sitesentinel-jenkins:local
+    # root so the pipeline can use the host's Docker socket.
+    user: root
+    ports:
+      - "8081:8080"
+    environment:
+      JENKINS_ADMIN_ID: admin
+      JENKINS_ADMIN_PASSWORD: admin
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      # The pipeline clones this repo (committed changes on main) from here.
+      - ..:/workspace/sitesentinel:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
+  registry_data:

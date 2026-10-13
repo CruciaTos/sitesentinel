@@ -1,0 +1,46 @@
+# Alerts for the SiteSentinel stack. Unit tests: alert-rules.test.yml (promtool test rules).
+groups:
+  - name: sitesentinel
+    rules:
+      - alert: SiteSentinelDown
+        expr: up{job="sitesentinel"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "SiteSentinel backend is down"
+          description: "Prometheus has not been able to scrape {{ $labels.instance }} for more than 30 seconds."
+
+      # Expected to fire in the demo: the simulator leaves PPE off 30% of people by default.
+      # NaN (nobody seen in the window) never compares, so an empty site stays quiet.
+      - alert: LowPPECompliance
+        expr: sitesentinel_protected_ratio < 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PPE compliance is below 80%"
+          description: "Only {{ $value | humanizePercentage }} of the people seen in the dashboard window wore a hard hat and a vest."
+
+      # "or vector(0)" also catches a backend that is up but has never recorded a check.
+      - alert: NoChecksReceived
+        expr: (sum(rate(sitesentinel_checks_total[2m])) or vector(0)) == 0 and on() up{job="sitesentinel"} == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No safety checks received"
+          description: "The backend is up but has not recorded a check for over 2 minutes. Are the cameras (or the simulator) running?"
+
+      # The "> 0" filter drops the ratio when there is no traffic, so it never divides by zero.
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(sitesentinel_http_requests_total{status=~"5.."}[2m]))
+            / (sum(rate(sitesentinel_http_requests_total[2m])) > 0)
+          > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend 5xx error rate is above 5%"
+          description: "{{ $value | humanizePercentage }} of backend requests failed with a 5xx status over the last 2 minutes."

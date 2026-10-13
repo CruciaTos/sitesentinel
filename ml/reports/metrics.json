@@ -1,0 +1,147 @@
+{
+  "generated_at": "2026-10-13T14:16:23Z",
+  "data": {
+    "path": "ml/data/ppe_pairs.csv",
+    "sha256": "6d1b6d43531bfb72016563225fd3bda0800eafcebc214b3d15e1bbd67a493bd0",
+    "rows": 6000,
+    "train_rows": 4800,
+    "test_rows": 1200,
+    "seed": 42
+  },
+  "candidate": {
+    "version": "2026.10.13-6d1b6d4",
+    "algorithm": "logistic_regression",
+    "metrics": {
+      "hardhat": {
+        "accuracy": 0.9733,
+        "precision": 0.9578,
+        "recall": 0.9899,
+        "f1": 0.9736
+      },
+      "vest": {
+        "accuracy": 0.965,
+        "precision": 0.9668,
+        "recall": 0.9636,
+        "f1": 0.9652
+      },
+      "overall": {
+        "accuracy": 0.9692,
+        "f1": 0.9694
+      }
+    },
+    "confusion_matrices": {
+      "hardhat": {
+        "tn": 289,
+        "fp": 13,
+        "fn": 3,
+        "tp": 295
+      },
+      "vest": {
+        "tn": 288,
+        "fp": 10,
+        "fn": 11,
+        "tp": 291
+      }
+    },
+    "accuracy_by_scenario": {
+      "far": 0.9793,
+      "ground": 0.9818,
+      "held": 0.9722,
+      "neighbour": 0.8994,
+      "worn": 0.9832
+    }
+  },
+  "baseline_rule": {
+    "version": "rules-0.6",
+    "algorithm": "overlap_rule",
+    "metrics": {
+      "hardhat": {
+        "accuracy": 0.8167,
+        "precision": 0.7338,
+        "recall": 0.9899,
+        "f1": 0.8429
+      },
+      "vest": {
+        "accuracy": 0.8267,
+        "precision": 0.7552,
+        "recall": 0.9702,
+        "f1": 0.8493
+      },
+      "overall": {
+        "accuracy": 0.8217,
+        "f1": 0.846
+      }
+    },
+    "confusion_matrices": {
+      "hardhat": {
+        "tn": 195,
+        "fp": 107,
+        "fn": 3,
+        "tp": 295
+      },
+      "vest": {
+        "tn": 203,
+        "fp": 95,
+        "fn": 9,
+        "tp": 293
+      }
+    },
+    "accuracy_by_scenario": {
+      "far": 0.9793,
+      "ground": 0.7091,
+      "held": 0.2222,
+      "neighbour": 0.8343,
+      "worn": 0.9815
+    }
+  },
+  "previous_model": {
+    "version": "2026.10.13-6d1b6d4",
+    "algorithm": "logistic_regression",
+    "metrics": {
+      "hardhat": {
+        "accuracy": 0.9733,
+        "precision": 0.9578,
+        "recall": 0.9899,
+        "f1": 0.9736
+      },
+      "vest": {
+        "accuracy": 0.965,
+        "precision": 0.9668,
+        "recall": 0.9636,
+        "f1": 0.9652
+      },
+      "overall": {
+        "accuracy": 0.9692,
+        "f1": 0.9694
+      }
+    },
+    "confusion_matrices": {
+      "hardhat": {
+        "tn": 289,
+        "fp": 13,
+        "fn": 3,
+        "tp": 295
+      },
+      "vest": {
+        "tn": 288,
+        "fp": 10,
+        "fn": 11,
+        "tp": 291
+      }
+    },
+    "accuracy_by_scenario": {
+      "far": 0.9793,
+      "ground": 0.9818,
+      "held": 0.9722,
+      "neighbour": 0.8994,
+      "worn": 0.9832
+    }
+  },
+  "gate": {
+    "passed": true,
+    "min_accuracy": 0.9,
+    "max_regression": 0.02,
+    "reasons": []
+  },
+  "model_written": "backend/model/ppe_model.json"
+}

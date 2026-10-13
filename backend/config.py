@@ -1,7 +1,13 @@
 import os
 
+import ppe_model
+
 config = {
     "port": int(os.getenv("PORT", 8080)),
+    # Shown on the dashboard, in /healthz and in the sitesentinel_app_info metric.
+    "app_version": os.getenv("APP_VERSION", "dev"),
+    # Trained PPE association model (written by ml/train.py).
+    "model_path": os.getenv("MODEL_PATH", ppe_model.DEFAULT_PATH),
     # Where safety alerts go: "console" prints them, "spark" posts to a Webex space.
     "provider": os.getenv("PROVIDER", "console"),
     "spark": {

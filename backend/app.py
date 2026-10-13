@@ -1,9 +1,13 @@
-"""SiteSentinel backend: receives detections, serves the dashboard, sends alerts."""
+"""SiteSentinel backend: receives detections, serves the dashboard and metrics, sends alerts."""
+import math
 import time
 from datetime import datetime, timezone
 
 from flask import Flask, Response, abort, jsonify, render_template, request
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+import metrics
+import ppe_model
 from config import config
 from notification.factory import NotificationFactory
 from store import EventStore
@@ -14,7 +18,13 @@ store = EventStore(
     window_minutes=config["window_minutes"],
 )
 notifier = NotificationFactory.instance(config)
+model = ppe_model.load(config["model_path"])
+print("[Info] PPE model", model.version, "({})".format(model.algorithm))
 _last_alert = {}
+
+metrics.install(app)
+metrics.set_info(config["app_version"], model)
+metrics.track_store(lambda: store)
 
 ALERT_TEMPLATE = (
     "### SiteSentinel alert\n"
@@ -58,6 +68,55 @@ def _should_alert(camera_id):
     return True
 
 
+def _is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _read_check():
+    """The fields shared by /v1/detections and /v1/frames: (body, camera id, timestamp ms, base64 image)."""
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        raise HttpError("Send a JSON body.")
+    camera_id = body.get("cameraId")
+    if not camera_id or not isinstance(camera_id, str):
+        raise HttpError("cameraId is required.")
+    timestamp = body.get("timestamp") or int(time.time() * 1000)
+    if not _is_number(timestamp):
+        raise HttpError("timestamp must be a number of milliseconds.")
+    image = body.get("image") or {}
+    if not isinstance(image, dict):
+        raise HttpError("image must be an object with a base64 raw field.")
+    return body, camera_id, timestamp, image.get("raw")
+
+
+def _read_boxes(body, key, required=False):
+    boxes = body.get(key)
+    if boxes is None and not required:
+        return []
+    if not isinstance(boxes, list):
+        raise HttpError("{} must be a list of boxes.".format(key))
+    for box in boxes:
+        if not (isinstance(box, list) and len(box) == 4 and all(_is_number(v) for v in box)):
+            raise HttpError("Each box in {} must be [ymin, xmin, ymax, xmax].".format(key))
+    return [[float(v) for v in box] for box in boxes]
+
+
+def _record(camera_id, timestamp, persons, image_b64):
+    """Store one check, update the metrics and send an alert if someone is unprotected."""
+    event = store.add(camera_id, timestamp, persons, image_b64)
+    metrics.record_check(event)
+
+    if event["status"] == "violation":
+        print("[Warn]", camera_id, "people without full protection")
+        if _should_alert(camera_id):
+            # Console.send returns None; Spark.send returns False when Webex rejects the message.
+            if notifier.send(_format_alert(event)) is not False:
+                metrics.record_alert(camera_id)
+    else:
+        print("[Info]", camera_id, "everyone protected")
+    return event
+
+
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html")
@@ -65,7 +124,17 @@ def dashboard():
 
 @app.route("/healthz")
 def healthz():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "version": config["app_version"], "model_version": str(model.version)})
+
+
+@app.route("/api/version")
+def api_version():
+    return jsonify({"app_version": config["app_version"], "model": model.info()})
+
+
+@app.route("/metrics")
+def prometheus_metrics():
+    return Response(generate_latest(), content_type=CONTENT_TYPE_LATEST)
 
 
 # The detector posts one JSON document per check:
@@ -77,12 +146,7 @@ def healthz():
 # }
 @app.route("/v1/detections", methods=["POST"])
 def create_detection():
-    body = request.get_json(silent=True)
-    if not isinstance(body, dict):
-        raise HttpError("Send a JSON body.")
-    camera_id = body.get("cameraId")
-    if not camera_id:
-        raise HttpError("cameraId is required.")
+    body, camera_id, timestamp, image_b64 = _read_check()
     persons = body.get("persons")
     if not isinstance(persons, list):
         raise HttpError("persons must be a list.")
@@ -91,18 +155,25 @@ def create_detection():
     except (KeyError, TypeError):
         raise HttpError("Each person needs hardhat and vest values.")
 
-    timestamp = body.get("timestamp") or int(time.time() * 1000)
-    image = body.get("image") or {}
-    event = store.add(camera_id, timestamp, persons, image.get("raw"))
-
-    if event["status"] == "violation":
-        print("[Warn]", camera_id, "people without full protection")
-        if _should_alert(camera_id):
-            notifier.send(_format_alert(event))
-    else:
-        print("[Info]", camera_id, "everyone protected")
-
+    event = _record(camera_id, timestamp, persons, image_b64)
     return jsonify(event), 201
+
+
+# The simulator (or a detector that leaves the matching to the backend) posts raw boxes,
+# each a normalized [ymin, xmin, ymax, xmax]; the PPE model decides who wears what:
+# {"cameraId": "gate-1", "timestamp": 1760000000000,
+#  "persons": [[...], ...], "hardhats": [[...], ...], "vests": [[...], ...], "image": {"raw": "<base64>"}}
+@app.route("/v1/frames", methods=["POST"])
+def create_frame():
+    body, camera_id, timestamp, image_b64 = _read_check()
+    person_boxes = _read_boxes(body, "persons", required=True)
+    hardhats = _read_boxes(body, "hardhats")
+    vests = _read_boxes(body, "vests")
+
+    persons = ppe_model.assess_people(model, person_boxes, hardhats, vests)
+    metrics.record_predictions(persons)
+    event = _record(camera_id, timestamp, persons, image_b64)
+    return jsonify(dict(event, model_version=str(model.version), persons=persons)), 201
 
 
 @app.route("/api/summary")

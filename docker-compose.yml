@@ -1,0 +1,50 @@
+# SiteSentinel stack: backend + camera simulator + Prometheus + Grafana.
+#   docker compose up -d --build
+# App http://localhost:8080 | Prometheus http://localhost:9090 | Grafana http://localhost:3000 (admin/admin)
+# IMAGE/TAG pick the backend image (the Jenkins deploy sets them); configs are baked into the images.
+name: sitesentinel
+
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        APP_VERSION: ${TAG:-local}
+    image: ${IMAGE:-sitesentinel-backend}:${TAG:-local}
+    ports:
+      - "8080:8080"
+    environment:
+      PROVIDER: console # "spark" posts alerts to a Webex space
+      ALERT_COOLDOWN_SECONDS: "30"
+    restart: unless-stopped
+
+  simulator:
+    image: ${IMAGE:-sitesentinel-backend}:${TAG:-local}
+    command: ["python", "simulator.py"]
+    environment:
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      backend:
+        condition: service_healthy # HEALTHCHECK on /healthz comes from the backend image
+    healthcheck:
+      disable: true # the simulator serves no HTTP, so the image's /healthz check does not apply
+    restart: unless-stopped
+
+  prometheus:
+    build: ./monitoring/prometheus
+    image: sitesentinel-prometheus:local
+    ports:
+      - "9090:9090"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  grafana:
+    build: ./monitoring/grafana
+    image: sitesentinel-grafana:local
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped

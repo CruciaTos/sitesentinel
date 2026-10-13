@@ -123,7 +123,7 @@
     box.querySelector(".empty-title").textContent = hasChecks ? "No violations logged." : "Nothing logged yet.";
     box.querySelector(".empty-body").textContent = hasChecks
       ? "Every check so far found everyone protected. Switch to All checks to see them."
-      : "Start the backend, then run the detector. Checks appear here within seconds.";
+      : "Start the backend, then run the simulator (or the detector). Checks appear here within seconds.";
     box.querySelector("pre").hidden = hasChecks;
   }
 
@@ -214,6 +214,19 @@
     });
   });
 
+  /* ---- Versions (footer) ---- */
+  function loadVersions() {
+    get("/api/version")
+      .then(function (v) {
+        var model = v.model || {};
+        var node = $("versions");
+        node.textContent = "App " + v.app_version + " · Model " + model.version;
+        node.title = "Model algorithm: " + model.algorithm + (model.trained_at ? ", trained " + model.trained_at : "");
+      })
+      .catch(function () { /* keep the placeholder */ });
+  }
+
+  loadVersions();
   refresh();
   setInterval(refresh, POLL_MS);
 })();

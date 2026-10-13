@@ -56,8 +56,9 @@
         <ol class="rows" id="rows"></ol>
         <div class="empty" id="empty" hidden>
           <p class="empty-title">Nothing logged yet.</p>
-          <p class="empty-body">Start the backend, then run the detector. Checks appear here within seconds.</p>
-          <pre><code>python3 run_detector.py --model_dir=model --video_file_name=demo_video.mp4 --show_video_window=1 --camera_id=gate-1</code></pre>
+          <p class="empty-body">Start the backend, then run the simulator (or the detector). Checks appear here within seconds.</p>
+          <pre><code>python simulator.py
+python3 run_detector.py --model_dir=model --video_file_name=demo_video.mp4 --show_video_window=1 --camera_id=gate-1</code></pre>
         </div>
       </div>
 
@@ -75,6 +76,10 @@
       </aside>
     </section>
   </main>
+
+  <footer class="foot">
+    <p id="versions">App &ndash; &middot; Model &ndash;</p>
+  </footer>
 
   <dialog id="viewer" class="viewer">
     <form method="dialog" class="viewer-in">

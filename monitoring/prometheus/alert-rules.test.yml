@@ -1,0 +1,161 @@
+# Unit tests for alert-rules.yml:
+#   promtool test rules alert-rules.test.yml
+# Each alert fires on synthetic "bad" series and stays quiet on healthy ones.
+rule_files:
+  - alert-rules.yml
+
+evaluation_interval: 15s
+
+tests:
+  - name: SiteSentinelDown fires after 30s of failed scrapes
+    interval: 15s
+    input_series:
+      - series: 'up{job="sitesentinel", instance="backend:8080"}'
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 15s
+        alertname: SiteSentinelDown
+        exp_alerts: []
+      - eval_time: 45s
+        alertname: SiteSentinelDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: sitesentinel
+              instance: backend:8080
+            exp_annotations:
+              summary: "SiteSentinel backend is down"
+              description: "Prometheus has not been able to scrape backend:8080 for more than 30 seconds."
+      # A down backend is SiteSentinelDown's job, not NoChecksReceived's.
+      - eval_time: 4m
+        alertname: NoChecksReceived
+        exp_alerts: []
+
+  - name: LowPPECompliance fires after 1m below 80%
+    interval: 15s
+    input_series:
+      - series: 'up{job="sitesentinel", instance="backend:8080"}'
+        values: "1x20"
+      - series: 'sitesentinel_protected_ratio{job="sitesentinel", instance="backend:8080"}'
+        values: "0.6x20"
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: LowPPECompliance
+        exp_alerts: []
+      - eval_time: 90s
+        alertname: LowPPECompliance
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: sitesentinel
+              instance: backend:8080
+            exp_annotations:
+              summary: "PPE compliance is below 80%"
+              description: "Only 60% of the people seen in the dashboard window wore a hard hat and a vest."
+
+  - name: NoChecksReceived fires when the check counter stops moving
+    interval: 15s
+    input_series:
+      - series: 'up{job="sitesentinel", instance="backend:8080"}'
+        values: "1x20"
+      - series: 'sitesentinel_checks_total{job="sitesentinel", instance="backend:8080", camera="gate-1", status="clear"}'
+        values: "12x20"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: NoChecksReceived
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: NoChecksReceived
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No safety checks received"
+              description: "The backend is up but has not recorded a check for over 2 minutes. Are the cameras (or the simulator) running?"
+
+  - name: NoChecksReceived fires when the backend never recorded a check
+    interval: 15s
+    input_series:
+      - series: 'up{job="sitesentinel", instance="backend:8080"}'
+        values: "1x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: NoChecksReceived
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No safety checks received"
+              description: "The backend is up but has not recorded a check for over 2 minutes. Are the cameras (or the simulator) running?"
+
+  - name: HighErrorRate fires after 2m above 5% errors
+    interval: 15s
+    input_series:
+      - series: 'sitesentinel_http_requests_total{job="sitesentinel", instance="backend:8080", method="POST", endpoint="/v1/frames", status="201"}'
+        values: "0+3x20"
+      - series: 'sitesentinel_http_requests_total{job="sitesentinel", instance="backend:8080", method="POST", endpoint="/v1/frames", status="500"}'
+        values: "0+1x20"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: HighErrorRate
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Backend 5xx error rate is above 5%"
+              description: "25% of backend requests failed with a 5xx status over the last 2 minutes."
+
+  - name: A healthy site raises no alerts
+    interval: 15s
+    input_series:
+      - series: 'up{job="sitesentinel", instance="backend:8080"}'
+        values: "1x20"
+      - series: 'sitesentinel_protected_ratio{job="sitesentinel", instance="backend:8080"}'
+        values: "0.95x20"
+      - series: 'sitesentinel_checks_total{job="sitesentinel", instance="backend:8080", camera="gate-1", status="clear"}'
+        values: "0+2x20"
+      - series: 'sitesentinel_checks_total{job="sitesentinel", instance="backend:8080", camera="gate-1", status="violation"}'
+        values: "0+1x20"
+      - series: 'sitesentinel_http_requests_total{job="sitesentinel", instance="backend:8080", method="POST", endpoint="/v1/frames", status="201"}'
+        values: "0+20x20"
+      - series: 'sitesentinel_http_requests_total{job="sitesentinel", instance="backend:8080", method="POST", endpoint="/v1/frames", status="500"}'
+        values: "0+0x10 1+0x10"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: SiteSentinelDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: LowPPECompliance
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: NoChecksReceived
+        exp_alerts: []
+      # One 500 among ~400 requests is well under 5%.
+      - eval_time: 4m
+        alertname: HighErrorRate
+        exp_alerts: []
+
+  - name: An empty site with no traffic stays quiet (NaN ratio, zero requests)
+    interval: 15s
+    input_series:
+      - series: 'up{job="sitesentinel", instance="backend:8080"}'
+        values: "1x20"
+      - series: 'sitesentinel_protected_ratio{job="sitesentinel", instance="backend:8080"}'
+        # NaN = nobody seen in the window ("NaNxN" is not valid series notation).
+        values: "NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN"
+      - series: 'sitesentinel_checks_total{job="sitesentinel", instance="backend:8080", camera="gate-1", status="clear"}'
+        values: "0+1x20"
+      - series: 'sitesentinel_http_requests_total{job="sitesentinel", instance="backend:8080", method="GET", endpoint="/healthz", status="200"}'
+        values: "7x20"
+      - series: 'sitesentinel_http_requests_total{job="sitesentinel", instance="backend:8080", method="GET", endpoint="/healthz", status="500"}'
+        values: "3x20"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LowPPECompliance
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: HighErrorRate
+        exp_alerts: []

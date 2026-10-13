@@ -1,0 +1,2 @@
+# The root .gitignore ignores reports/ (test output); the model report here is committed.
+!reports/
