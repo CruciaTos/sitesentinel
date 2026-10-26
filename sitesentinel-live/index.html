@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SiteSentinel Live</title>
+  <meta name="description" content="SiteSentinel live demo: hard hat and vest checks from the phone camera.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="app.css">
+  <style>
+    .camcard { background: var(--paper); border: 2px solid var(--rule); margin-bottom: 24px; }
+    .camhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px var(--gutter); border-bottom: 2px solid var(--rule); flex-wrap: wrap; }
+    .camhead h2 { font-size: 18px; }
+    .stage { position: relative; background: #0b0e11; min-height: 200px; display: grid; place-items: center; }
+    .stage video, .stage canvas { width: 100%; height: auto; display: block; }
+    .stage canvas { position: absolute; inset: 0; height: 100%; }
+    .stage .hint { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #eceee9; padding: 24px; font-weight: 600; }
+    .stage .hint[hidden] { display: none; }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { font: inherit; font-weight: 700; font-size: 15px; padding: 10px 14px; background: var(--ink); color: var(--concrete); border: 2px solid var(--rule); cursor: pointer; }
+    .btn.alt { background: transparent; color: var(--ink); }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .camstat { padding: 12px var(--gutter); font-weight: 600; min-height: 48px; }
+    .camstat.bad { color: var(--bad); }
+    .camstat.ok { color: var(--ok); }
+    .camnote { padding: 0 var(--gutter) 14px; color: var(--muted); font-size: 14px; }
+    .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .switch input { width: 18px; height: 18px; accent-color: var(--ink); }
+    .alertbar { border: 2px solid var(--rule); padding: 12px var(--gutter); margin-bottom: 24px; font-weight: 700; }
+    .alertbar[hidden] { display: none; }
+    .alertbar.pending { background: var(--tape); color: #151a1f; }
+    .alertbar.firing { background: var(--bad); color: #fff; }
+    .alertbar small { display: block; font-weight: 500; margin-top: 2px; }
+    @media (max-width: 860px) { .big { font-size: clamp(72px, 24vw, 140px); } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <h1 class="wordmark">SiteSentinel</h1>
+    <div class="bar-status" aria-live="polite">
+      <span class="dot" id="live-dot"></span>
+      <span id="live-text">Waiting for a camera</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="camcard" aria-labelledby="cam-title">
+      <div class="camhead">
+        <h2 id="cam-title">Live camera &middot; phone-cam</h2>
+        <div class="btns">
+          <button type="button" class="btn" id="cam-start">Start camera</button>
+          <button type="button" class="btn alt" id="cam-flip" disabled>Flip</button>
+          <button type="button" class="btn alt" id="cam-stop" disabled>Stop</button>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="overlay"></canvas>
+        <p class="hint" id="hint">Tap Start camera and point it at people.</p>
+      </div>
+      <p class="camstat" id="cam-status" aria-live="polite">Camera is off.</p>
+      <p class="camnote">Person detector: COCO-SSD (TensorFlow.js, runs on this phone). Hard hat and vest: colour regions
+        (yellow, orange, red hats; hi-vis vests), judged by the SiteSentinel PPE model.</p>
+    </section>
+
+    <div class="alertbar" id="alertbar" hidden></div>
+
+    <section class="now" aria-labelledby="now-title">
+      <div class="tape" aria-hidden="true"></div>
+      <div class="now-body">
+        <div class="now-main">
+          <h2 id="now-title" class="now-title">Fully protected, last <span id="window">15</span> minutes</h2>
+          <p class="big" id="rate">&ndash;</p>
+          <p class="now-sub" id="rate-sub">No people detected yet.</p>
+        </div>
+        <dl class="tallies">
+          <div class="tally"><dt>Missing hard hat</dt><dd id="t-hat">0</dd></div>
+          <div class="tally"><dt>Missing vest</dt><dd id="t-vest">0</dd></div>
+          <div class="tally"><dt>Missing both</dt><dd id="t-both">0</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="cols">
+      <div class="log" aria-labelledby="log-title">
+        <div class="log-head">
+          <h2 id="log-title">Incident log</h2>
+          <div class="seg" role="group" aria-label="Filter log">
+            <button type="button" class="seg-btn is-on" data-filter="violations" aria-pressed="true">Violations</button>
+            <button type="button" class="seg-btn" data-filter="all" aria-pressed="false">All checks</button>
+          </div>
+        </div>
+        <ol class="rows" id="rows"></ol>
+        <div class="empty" id="empty" hidden>
+          <p class="empty-title">Nothing logged yet.</p>
+          <p class="empty-body">Start the camera or turn on the simulated site cameras. Checks appear here within seconds.</p>
+        </div>
+      </div>
+
+      <aside class="side">
+        <section aria-labelledby="cams-title">
+          <h2 id="cams-title">Cameras</h2>
+          <label class="switch" style="margin-top:12px"><input type="checkbox" id="sim-on" checked> Simulated site cameras (gate-1, scaffold-2, crane-3)</label>
+          <ul class="cams" id="cams"></ul>
+          <p class="muted" id="cams-empty">No cameras have reported in.</p>
+        </section>
+        <section aria-labelledby="hours-title">
+          <h2 id="hours-title">Last 12 hours</h2>
+          <div id="hours" class="hours" role="img" aria-label="Checks per hour, violations highlighted"></div>
+          <p class="legend"><span class="key key-ok"></span>Checks<span class="key key-bad"></span>With violations</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p id="versions">App live-demo &middot; Model &ndash;</p>
+  </footer>
+
+  <dialog id="viewer" class="viewer">
+    <form method="dialog" class="viewer-in">
+      <img id="viewer-img" alt="">
+      <p id="viewer-cap"></p>
+      <button class="close" value="close">Close</button>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>
